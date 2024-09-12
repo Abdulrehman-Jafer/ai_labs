@@ -1,68 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import Head from "next/head";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { app } from "@/firebase/client";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { useAuth } from "@/hooks/useAuth";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const router = useRouter();
-  const auth = getAuth(app);
+  const { auth } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [errorMessage, setErrorMessage] = useState(""); // State to store the error message
-
-  const handleRegister = async (event) => {
+  const handle_register = async (event: FormEvent) => {
     event.preventDefault();
-    console.log({
-      body: JSON.stringify({ display_name: name, email, password }),
-    });
-    // return;
+
     try {
-      const { data, status } = await axios.post("/api/auth/register", {
+      await axios.post("/api/auth/register", {
         display_name: name,
         email,
         password,
       });
 
-      if (status === 201) router.push("/signin");
-      else setErrorMessage(data.message);
+      router.push("/signin");
     } catch (error) {
-      console.log({ error });
-      setErrorMessage(
+      toast.error(
         error.response.data.message ?? "Failed to connect to the server"
       );
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handle_google_sign_in = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-
-      // Send the ID token to your server
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken }),
-      });
-
-      const message = await response.text();
-
-      if (response.ok) {
-        router.push("/dashboard");
-      } else {
-        setErrorMessage(message || "Failed to register with Google login");
-      }
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      router.push("/dashboard");
     } catch (error) {
-      setErrorMessage(error || "Failed to register with Google login");
+      toast.error(
+        error.response.data.message ?? "Failed to register with Google login"
+      );
     }
   };
 
@@ -75,12 +53,11 @@ export default function Register() {
       <section className="bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="bg-gray-100 flex rounded-2xl shadow-lg max-w-3xl p-5 items-center">
           <div className="md:w-1/2 px-8 md:px-16">
-            {errorMessage && <p className="text-red-500">{errorMessage}</p>}
             <h2 className="font-bold text-2xl text-[#002D74]">Register</h2>
             <p className="text-xs mt-4 text-[#002D74]">
               Please enter your info to sign up:
             </p>
-            <form onSubmit={handleRegister} className="flex flex-col gap-4">
+            <form onSubmit={handle_register} className="flex flex-col gap-4">
               <input
                 className="p-2 mt-8 rounded-xl border text-black"
                 type="text"
@@ -126,7 +103,7 @@ export default function Register() {
             </div>
 
             <button
-              onClick={handleGoogleSignIn}
+              onClick={handle_google_sign_in}
               className="bg-white border py-2 w-full rounded-xl mt-5 flex justify-center items-center text-sm hover:scale-105 duration-300 text-[#002D74]"
             >
               <svg

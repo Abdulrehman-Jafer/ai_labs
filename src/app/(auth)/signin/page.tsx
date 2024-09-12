@@ -1,84 +1,44 @@
 "use client";
-import { useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import Head from "next/head";
 import {
-  getAuth,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  onAuthStateChanged,
 } from "firebase/auth";
-import { app } from "@/firebase/client";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const router = useRouter();
-  const auth = getAuth(app);
+  const { auth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [errorMessage, setErrorMessage] = useState(""); // State to store the error message
-
-  // Redirect if already logged in
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log({ user });
-      if (user) router.push("/dashboard");
-      else router.push("/signin");
-    });
-    return () => unsubscribe();
-  }, [auth, router]);
-
-  const handleLogin = async (event) => {
+  const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const idToken = await userCredential.user.getIdToken();
-
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (response.ok) router.push("/dashboard");
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/dashboard");
     } catch (error) {
-      setErrorMessage(error || "Failed to sign in");
+      toast("Failed to sign in");
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      const userEmail = result.user.email; // Extract the user's email
+      await signInWithPopup(auth, provider);
 
-      // Send the ID token to your server
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken, email: userEmail }),
-      });
-
-      if (response.ok) {
-        router.push("/dashboard");
-      }
+      router.push("/dashboard");
     } catch (error) {
-      setErrorMessage(error || "Failed to sign in with Google login");
+      toast("Failed to sign in with Google login");
     }
   };
 
   const handleRegisterClick = () => {
-    router.push("/register"); // Replace '/register' with the path you want to redirect to
+    router.push("/register");
   };
 
   return (
